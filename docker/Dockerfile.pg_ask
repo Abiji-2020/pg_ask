@@ -1,0 +1,24 @@
+FROM postgres:16
+
+# Install dev tools + PostgreSQL server dev headers
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    ninja-build \
+    postgresql-server-dev-16 \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project into container
+COPY . /pg_ask
+WORKDIR /pg_ask
+
+# Build + install extension
+RUN mkdir -p build \
+    && cd build \
+    && cmake -DCMAKE_BUILD_TYPE=Release .. \
+    && cmake --build . --parallel \
+    && cmake --install .
+
+# Expose standard Postgres port
+EXPOSE 5432

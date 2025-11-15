@@ -1,0 +1,5 @@
+# pg_ask extension
+comment = 'AI-powered natural language → SQL bridge'
+default_version = '1.0'
+module_pathname = '$libdir/pg_ask'
+relocatable = true
