@@ -10,11 +10,13 @@ services:
       POSTGRES_USER: abi
       POSTGRES_PASSWORD: abi
       POSTGRES_DB: askdb
+      PG_ASK_AI_KEY: ${API_KEY}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    
 
   pgadmin:
     image: dpage/pgadmin4:latest

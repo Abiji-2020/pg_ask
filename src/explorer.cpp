@@ -18,7 +18,7 @@ extern "C" {
 #include <string>
 #include <sstream>
 #include <vector>
-#include <explorer.h>
+#include "explorer.h"
 
 static bool isSystemSchema(const std::string& s, std::vector<std::string>& ignore) {
     for (const auto& bad : ignore) {
@@ -93,7 +93,7 @@ std::string buildDatabaseMap() {
     CommandCounterIncrement();
     Snapshot snapshot = GetLatestSnapshot();
 
-    std::vector<std::string> system_schmeas = {
+    std::vector<std::string> system_schemas = {
         "pg_catalog",
         "pg_toast",
         "information_schema",
@@ -110,7 +110,7 @@ std::string buildDatabaseMap() {
         Form_pg_namespace nsp = (Form_pg_namespace)GETSTRUCT(nsp_tup);
         std::string schema = NameStr(nsp->nspname);
 
-        if (isSystemSchema(schema, system_schmeas))
+        if (isSystemSchema(schema, system_schemas))
             continue;
         out << "Schema: " << schema << "\n";
         listTables(nsp->oid, out, snapshot);
