@@ -70,6 +70,11 @@ target_link_libraries(pg_ask PRIVATE
     ai-sdk-cpp
 )
 
+# On macOS, explicitly link PostgreSQL server libraries (not needed on Linux)
+if(APPLE)
+    target_link_libraries(pg_ask PRIVATE pgcommon pgport)
+endif()
+
 # On macOS, PostgreSQL headers include libintl.h; ensure gettext headers/libs are available
 if(APPLE)
     # Prefer CMake's FindGettext to locate Homebrew gettext (keg-only)

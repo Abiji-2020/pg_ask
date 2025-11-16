@@ -2,116 +2,85 @@ name: Build, Test & Release pg_ask Extension
 
 on:
   push:
-    branches: [ main, feat/dev ]
-    tags: [ 'v*' ]
+    branches: [main, feat/dev]
+    tags: ['v*']
   pull_request:
-    branches: [ main, feat/dev ]
+    branches: [main, feat/dev]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        platform:
+          - {os: ubuntu-latest, arch: linux-x86_64, name: Linux}
+          - {os: macos-latest, arch: macos-arm64, name: macOS}
+    runs-on: ${{ matrix.platform.os }}
+    name: Build ${{ matrix.platform.name }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      
-      - name: Install dependencies
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          # Install newer GCC/G++ (prefer 13), CMake and PostgreSQL server dev headers
-          sudo apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-13 g++-13 git || \
-            sudo apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-12 g++-12 git
-          # Make sure alternatives exist (optional) and show versions
+          sudo apt-get update && sudo apt-get install -y \
+            build-essential cmake postgresql-server-dev-16 gcc-13 g++-13 git
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 || true
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 || true
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 90 || true
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 90 || true
-          gcc --version || true
-          g++ --version || true
+          gcc --version && g++ --version
 
-      - name: Build extension
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
         run: |
-          # Prefer GCC-13/G++-13 if available, fall back to GCC-12
-          if [ -x /usr/bin/gcc-13 ]; then
-            export CC=/usr/bin/gcc-13
-          elif [ -x /usr/bin/gcc-12 ]; then
-            export CC=/usr/bin/gcc-12
-          else
-            export CC=/usr/bin/gcc
-          fi
-          if [ -x /usr/bin/g++-13 ]; then
-            export CXX=/usr/bin/g++-13
-          elif [ -x /usr/bin/g++-12 ]; then
-            export CXX=/usr/bin/g++-12
-          else
-            export CXX=/usr/bin/g++
-          fi
-          mkdir build && cd build
-          cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_PARALLEL_LEVEL=$(nproc) ..
-          make -j$(nproc)
-      
-      - name: Create release artifact
-        run: |
-          mkdir -p releases/linux-x86_64
-          cp build/pg_ask.so releases/linux-x86_64/
-          cp pg/pg_ask.control releases/linux-x86_64/
-          cp pg/pg_ask--1.0.sql releases/linux-x86_64/
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pg_ask-linux-x86_64
-          path: releases/linux-x86_64/
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      
-      - name: Install dependencies
-        run: |
-          brew update
-          # Install PostgreSQL headers, CMake and gettext (provides libintl.h)
-          brew install postgresql@16 cmake gettext
+          brew update && brew install postgresql@16 cmake gettext
           brew link --force gettext
 
+      - name: Setup build environment
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            if [ -x /usr/bin/gcc-13 ]; then
+              echo "CC=/usr/bin/gcc-13" >> $GITHUB_ENV
+              echo "CXX=/usr/bin/g++-13" >> $GITHUB_ENV
+            fi
+            echo "PARALLEL_JOBS=$(nproc)" >> $GITHUB_ENV
+          else
+            echo "PATH=$(brew --prefix postgresql@16)/bin:$PATH" >> $GITHUB_ENV
+            echo "CPPFLAGS=-I$(brew --prefix gettext)/include" >> $GITHUB_ENV
+            echo "LDFLAGS=-L$(brew --prefix gettext)/lib" >> $GITHUB_ENV
+            echo "CMAKE_PREFIX_PATH=$(brew --prefix gettext)" >> $GITHUB_ENV
+            echo "PARALLEL_JOBS=$(sysctl -n hw.ncpu)" >> $GITHUB_ENV
+          fi
+
       - name: Build extension
         run: |
-          # Add PostgreSQL 16 bin directory to PATH so pg_config is found
-          export PATH="$(brew --prefix postgresql@16)/bin:$PATH"
-          # Make gettext headers/libraries available to the compiler
-          export CPPFLAGS="-I$(brew --prefix gettext)/include $CPPFLAGS"
-          export LDFLAGS="-L$(brew --prefix gettext)/lib $LDFLAGS"
-          export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
-          # Force Clang to use these flags when compiling C/C++ sources
-          export CFLAGS="$CPPFLAGS $CFLAGS"
-          export CXXFLAGS="$CPPFLAGS $CXXFLAGS"
-          mkdir build && cd build
-          cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) -DCMAKE_PREFIX_PATH="$(brew --prefix gettext)" ..
-          make -j$(sysctl -n hw.ncpu)
-      
-      - name: Create release artifact
-        run: |
-          mkdir -p releases/macos-arm64
-          cp build/pg_ask.so releases/macos-arm64/
-          cp pg/pg_ask.control releases/macos-arm64/
-          cp pg/pg_ask--1.0.sql releases/macos-arm64/
-      
+          mkdir -p build && cd build
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            export CFLAGS="$CPPFLAGS" CXXFLAGS="$CPPFLAGS"
+            cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS \
+              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" ..
+          else
+            cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX \
+              -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS ..
+          fi
+          make -j$PARALLEL_JOBS
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pg_ask-macos-arm64
-          path: releases/macos-arm64/
+          name: pg_ask-${{ matrix.platform.arch }}
+          path: |
+            build/pg_ask.so
+            pg/pg_ask.control
+            pg/pg_ask--1.0.sql
 
   build-docker:
     runs-on: ubuntu-latest
-    needs: build-linux
+    needs: build
     permissions:
       contents: read
       packages: write
@@ -119,23 +88,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: pg_ask-linux-x86_64
-          path: build-artifacts/
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to Container Registry
+
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -147,7 +110,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
-      
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -158,209 +121,45 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-          builder: ${{ steps.buildx.outputs.name }}
-  
-  publish-github-pages:
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    needs: [ build-linux, build-macos ]
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          fetch-depth: 0
-          submodules: recursive
-      
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: downloaded-artifacts/
-      
-      - name: Organize artifacts for pages
-        shell: bash
-        run: |
-          mkdir -p releases
-          cd downloaded-artifacts
-          
-          # Copy all platform builds to releases
-          for platform_dir in */; do
-            platform_name="${platform_dir%/}"
-            mkdir -p "../releases/$platform_name"
-            cp -r "$platform_dir"* "../releases/$platform_name/"
-          done
-      
-      - name: Copy install scripts to pages
-        shell: bash
-        run: |
-          # Copy from main branch scripts (Linux/macOS only)
-          git show HEAD:scripts/install.sh > install.sh 2>/dev/null || echo "#!/bin/bash
-          echo 'Install script not found' && exit 1" > install.sh
-          chmod +x install.sh
-      
-      - name: Generate dynamic INSTALL.md
-        shell: bash
-        env:
-          GITHUB_PAGES_URL: "${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-        run: |
-          # Copy main branch INSTALL.md and replace placeholders
-          git show HEAD:INSTALL.md > INSTALL.md.tmp || echo "# Installation Guide\n\nComing soon..." > INSTALL.md.tmp
-          sed -i "s|\$GITHUB_PAGES_URL|${{ env.GITHUB_PAGES_URL }}|g" INSTALL.md.tmp
-          sed -i "s|Abiji-2020/pg_ask|${{ github.repository }}|g" INSTALL.md.tmp
-          mv INSTALL.md.tmp INSTALL.md
-      
-      - name: Create release index.html
-        shell: bash
-        run: |
-          cd releases
-          cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>pg_ask Extension Releases</title>
-              <style>
-                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; max-width: 1000px; margin: 0 auto; padding: 40px; }
-                  h1 { color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
-                  .section { margin: 30px 0; }
-                  .platform { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }
-                  .platform h3 { margin-top: 0; color: #333; }
-                  .file { margin: 8px 0; }
-                  .file a { color: #0066cc; text-decoration: none; font-family: monospace; }
-                  .file a:hover { text-decoration: underline; }
-                  .quick-install { background: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0; }
-                  .quick-install code { background: #fff; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
-              </style>
-          </head>
-          <body>
-              <h1>📦 pg_ask Extension Releases</h1>
-              <p>Pre-built binaries and installation scripts for pg_ask PostgreSQL extension.</p>
-              
-              <div class="section">
-                  <h2>⚡ Quick Install</h2>
-                  <div class="quick-install">
-                      <strong>Linux/macOS:</strong><br>
-                      <code>curl -fsSL https://PAGES_URL/install.sh | bash</code>
-                  </div>
-                  <div class="quick-install">
-                      <strong>Windows:</strong><br>
-                      Use Docker: <code>docker pull ghcr.io/REPO/pg_ask:latest</code>
-                  </div>
-              </div>
-              
-              <div class="section">
-                  <h2>📥 Direct Downloads</h2>
-                  <div id="releases"></div>
-              </div>
-              
-              <script>
-                  fetch('manifest.json').then(r => r.json()).then(data => {
-                      const html = data.releases.map(r => `
-                          <div class="platform">
-                              <h3>🔧 ${r.platform}</h3>
-                              <div class="file"><a href="${r.binary}">📦 ${r.binary}</a></div>
-                              <div class="file"><a href="${r.control}">📄 ${r.control}</a></div>
-                              <div class="file"><a href="${r.sql}">📋 ${r.sql}</a></div>
-                          </div>
-                      `).join('');
-                      document.getElementById('releases').innerHTML = html;
-                  });
-              </script>
-          </body>
-          </html>
-          EOF
-      
-      - name: Create manifest
-        shell: bash
-        run: |
-          cd releases
-          cat > manifest.json << 'EOF'
-          {
-            "releases": [
-              {
-                "platform": "Linux x86_64",
-                "binary": "linux-x86_64/pg_ask.so",
-                "control": "linux-x86_64/pg_ask.control",
-                "sql": "linux-x86_64/pg_ask--1.0.sql"
-              },
-              {
-                "platform": "macOS ARM64",
-                "binary": "macos-arm64/pg_ask.so",
-                "control": "macos-arm64/pg_ask.control",
-                "sql": "macos-arm64/pg_ask--1.0.sql"
-              }
-            ]
-          }
-          EOF
-      
-      - name: Commit and push to gh-pages
-        shell: bash
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add releases/ install.sh index.html INSTALL.md
-          git commit -m "Release ${{ github.ref_name }} artifacts" || echo "No changes to commit"
-          git push origin gh-pages
-  
+
   publish-release:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    needs: [ build-linux, build-macos ]
+    needs: build
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
         with:
-          submodules: recursive
-      
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: all-artifacts/
-      
-      - name: Create release checksums
-        shell: bash
+          path: artifacts/
+
+      - name: Create checksums and release
         run: |
-          find all-artifacts -type f \( -name "*.so" -o -name "*.dll" -o -name "*.control" -o -name "*.sql" \) -exec sha256sum {} \; > SHA256SUMS
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+          find artifacts -type f \( -name "*.so" -o -name "*.control" -o -name "*.sql" \) \
+            -exec sha256sum {} \; > SHA256SUMS
+          
+      - uses: softprops/action-gh-release@v1
         with:
           files: |
-            all-artifacts/**/*.so
-            all-artifacts/**/*.control
-            all-artifacts/**/*.sql
+            artifacts/**/*.so
+            artifacts/**/*.control
+            artifacts/**/*.sql
             SHA256SUMS
           body: |
-            ## pg_ask Extension Release ${{ github.ref_name }}
+            Pre-built binaries for **Linux x86_64** and **macOS ARM64**.
             
-            Pre-built binaries for Linux and macOS are available below.
-            
-            **Windows users:** Use Docker or WSL2 with the Linux binary.
-            
-            ### Quick Install
-            
-            **Linux/macOS:**
+            **Quick Install (Linux/macOS):**
             ```bash
-            curl -fsSL https://github.com/${{ github.repository }}/raw/main/scripts/install.sh | bash -s -- --version ${{ github.ref_name }}
-            ```
-            
-            **Windows (PowerShell as Admin):**
-            ```powershell
-            Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/raw/main/scripts/install.ps1" -OutFile install.ps1
-            .\install.ps1 -Version "${{ github.ref_name }}"
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/install.sh | bash -s -- --version ${{ github.ref_name }}
             ```
             
             **Docker:**
             ```bash
-            docker run -e POSTGRES_PASSWORD=postgres -e PG_ASK_AI_KEY="your-key" ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            docker run -e POSTGRES_PASSWORD=postgres -e PG_ASK_AI_KEY="your-api-key" \
+              ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ```
-            
-            For detailed installation instructions, see [INSTALL.md](./INSTALL.md)
           draft: false
           prerelease: false
         env:
