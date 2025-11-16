@@ -1,5 +1,4 @@
 #include "ai_engine.h"
-#include "explorer.h"
 #include <stdexcept>
 
 #include <ai/openai.h>
@@ -96,9 +95,17 @@ std::string generate_sql(Engine& eng, const std::string& prompt, const std::stri
     if (result.error) {
         throw std::runtime_error("Error from the LLM Client: " + result.error_message());
     }
-    auto sql_json = nlohmann::json::parse(result.text);
-    std::string sql = sql_json["sql"].get<std::string>();
-    return sql;
+    try {
+        auto sql_json = nlohmann::json::parse(result.text);
+        if (!sql_json.contains("sql") || !sql_json["sql"].is_string()) {
+            throw std::runtime_error("Response JSON does not contain a string 'sql' key. Response: " + result.text);
+        }
+        std::string sql = sql_json["sql"].get<std::string>();
+        return sql;
+    } catch (const nlohmann::json::exception& e) {
+        throw std::runtime_error(std::string("Failed to parse response as JSON or extract 'sql' key: ") + e.what() +
+                                 ". Response: " + result.text);
+    }
 }
 
 } // namespace pg_ask::ai_engine

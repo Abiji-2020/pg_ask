@@ -1,9 +1,5 @@
-#ifndef PG_ASK_EXPLORER_H
-#define PG_ASK_EXPLORER_H
-
+#pragma once
 #include <string>
 
 std::string buildDatabaseMap();
 std::string formatSchema(const std::string& raw);
-
-#endif

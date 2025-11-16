@@ -20,7 +20,7 @@ extern "C" {
 #include <vector>
 #include "explorer.h"
 
-static bool isSystemSchema(const std::string& s, std::vector<std::string>& ignore) {
+static bool isSystemSchema(const std::string& s, const std::vector<std::string>& ignore) {
     for (const auto& bad : ignore) {
         if (s == bad)
             return true;
@@ -131,7 +131,7 @@ std::string formatSchema(const std::string& raw) {
 
     std::vector<std::pair<std::string, std::string>> columns;
 
-    auto trim = [](std::string s) {
+    auto trim = [](const std::string s) {
         auto start = s.find_first_not_of(" \t");
         auto end = s.find_last_not_of(" \t");
         if (start == std::string::npos)
