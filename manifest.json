@@ -2,10 +2,10 @@
   "version": "main",
   "releases": [
     {
-      "platform": "Linux x86_64",
-      "binary": "linux-x86_64/pg_ask.so",
-      "control": "linux-x86_64/pg_ask.control",
-      "sql": "linux-x86_64/pg_ask--1.0.sql"
+      "platform": "linux-x86_64",
+      "binary": null,
+      "control": null,
+      "sql": null
     }
   ]
 }
