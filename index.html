@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pg_ask Releases</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f5f5;color:#333}
+    .container{max-width:900px;margin:0 auto;padding:2rem;background:white;min-height:100vh}
+    h1{color:#0066cc;border-bottom:3px solid #0066cc;padding-bottom:1rem;margin-bottom:1rem}
+    .section{margin:2rem 0}
+    .quick-install{background:#e8f4f8;padding:1.5rem;border-radius:8px;border-left:4px solid #0066cc;margin:1rem 0}
+    .quick-install strong{display:block;margin-bottom:0.5rem}
+    .quick-install code{background:white;padding:0.5rem;border-radius:4px;font-family:monospace;display:block;overflow-x:auto}
+    .platform{margin:1.5rem 0;padding:1.5rem;border:1px solid #ddd;border-radius:8px;background:#fafafa}
+    .platform h3{color:#0066cc;margin-bottom:1rem}
+    .file{margin:0.75rem 0;display:flex;align-items:center}
+    .file-icon{margin-right:0.5rem;font-size:1.2em}
+    .file a{color:#0066cc;text-decoration:none;font-family:monospace;word-break:break-all}
+    .file a:hover{text-decoration:underline;color:#004c99}
+    footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #ddd;text-align:center;font-size:0.9rem;color:#666}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📦 pg_ask Extension Releases</h1>
+    <p>Pre-built PostgreSQL extension binaries for Linux.</p>
+    
+    <div class="section">
+      <h2>⚡ Quick Install</h2>
+      <div class="quick-install">
+        <strong>Linux:</strong>
+        <code>curl -fsSL https://raw.githubusercontent.com/Abiji-2020/pg_ask/gh-pages/install.sh | bash</code>
+      </div>
+      <div class="quick-install">
+        <strong>Windows:</strong>
+        Use Docker: <code>docker pull ghcr.io/Abiji-2020/pg_ask:latest</code>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>📥 Available Builds</h2>
+      <div id="releases"></div>
+    </div>
+    
+    <footer>
+      Latest release: <strong id="version">loading...</strong> | 
+      <a href="https://github.com/Abiji-2020/pg_ask">View on GitHub</a>
+    </footer>
+    
+    <script>
+      fetch('manifest.json')
+        .then(r => r.json())
+        .then(data => {
+          const html = data.releases.map(r => `
+            <div class="platform">
+              <h3>${r.platform}</h3>
+              <div class="file"><span class="file-icon">📦</span><a href="${r.binary}">${r.binary}</a></div>
+              <div class="file"><span class="file-icon">📄</span><a href="${r.control}">${r.control}</a></div>
+              <div class="file"><span class="file-icon">📋</span><a href="${r.sql}">${r.sql}</a></div>
+            </div>
+          `).join('');
+          document.getElementById('releases').innerHTML = html;
+          if (data.version) {
+            document.getElementById('version').textContent = data.version;
+          }
+        })
+        .catch(e => console.error('Failed to load releases:', e));
+    </script>
+  </div>
+</body>
+</html>
