@@ -60,9 +60,12 @@ jobs:
         run: |
           mkdir -p build && cd build
           if [ "$RUNNER_OS" = "macOS" ]; then
+            # Define the full path to pg_config installed by Homebrew
+            PG_CONFIG_PATH=$(brew --prefix postgresql@16)/bin/pg_config
             export CFLAGS="$CPPFLAGS" CXXFLAGS="$CPPFLAGS"
             cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS \
-              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" ..
+              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+              -DPG_CONFIG=$PG_CONFIG_PATH ..
           else
             cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX \
               -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS ..
