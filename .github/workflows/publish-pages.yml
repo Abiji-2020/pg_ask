@@ -40,7 +40,7 @@ jobs:
           for dir in artifacts/pg_ask-*/; do
             arch="${dir##*/pg_ask-}"
             mkdir -p "releases/$arch"
-            cp "$dir"* "releases/$arch/"
+            cp -r "$dir"* "releases/$arch/"
           done
 
       - name: Generate GitHub Pages site
