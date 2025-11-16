@@ -1,5 +1,5 @@
 # pg_ask extension
-comment = 'AI-powered natural language → SQL bridge'
+comment = 'AI-powered natural language → SQL bridge. Generates SQL from user prompts using the bundled ai-sdk-cpp client.'
 default_version = '1.0'
 module_pathname = '$libdir/pg_ask'
 relocatable = true
