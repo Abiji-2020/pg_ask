@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 project(pg_ask LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)   # Required for PostgreSQL .so modules
 
 # ----------------------------------------------------------------------
@@ -46,7 +48,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ai-sdk-cpp ai-sdk-build)
 # ----------------------------------------------------------------------
 
 file(GLOB CORE_SOURCES src/*.cpp)
-file(GLOB CORE_HEADERS include/*.hpp)
+file(GLOB CORE_HEADERS include/*.h)
 
 # ----------------------------------------------------------------------
 # Build PostgreSQL extension (.so module)

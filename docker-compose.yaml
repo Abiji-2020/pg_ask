@@ -4,12 +4,13 @@ services:
   postgres:
     build:
       context: .
-      dockerfile: docker/Dockerfile.pg_ask
+      dockerfile: docker/Dockerfile.minimal
     container_name: pg_ask_postgres
     environment:
       POSTGRES_USER: abi
       POSTGRES_PASSWORD: abi
       POSTGRES_DB: askdb
+      PG_ASK_AI_KEY: ${API_KEY}
     ports:
       - "5432:5432"
     volumes:

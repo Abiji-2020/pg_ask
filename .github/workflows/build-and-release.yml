@@ -1,0 +1,166 @@
+name: Build, Test & Release pg_ask Extension
+
+on:
+  push:
+    branches: [main, feat/dev]
+    tags: ['v*']
+  pull_request:
+    branches: [main, feat/dev]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform:
+          - {os: ubuntu-latest, arch: linux-x86_64, name: Linux}
+    runs-on: ${{ matrix.platform.os }}
+    name: Build ${{ matrix.platform.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies (Linux)
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            build-essential cmake postgresql-server-dev-16 gcc-13 g++-13 git
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 || true
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 || true
+          gcc --version && g++ --version
+
+      - name: Setup build environment
+        run: |
+          if [ -x /usr/bin/gcc-13 ]; then
+            echo "CC=/usr/bin/gcc-13" >> $GITHUB_ENV
+            echo "CXX=/usr/bin/g++-13" >> $GITHUB_ENV
+          fi
+          echo "PARALLEL_JOBS=$(nproc)" >> $GITHUB_ENV
+
+      - name: Build extension
+        run: |
+          mkdir -p build && cd build
+          cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX \
+            -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS ..
+          make -j$PARALLEL_JOBS
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pg_ask-${{ matrix.platform.arch }}
+          path: |
+            build/pg_ask.so
+            pg/pg_ask.control
+            pg/pg_ask--1.0.sql
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - dockerfile: ./docker/Dockerfile
+            tag-suffix: ""
+            variant: "full"
+          - dockerfile: ./docker/Dockerfile.minimal
+            tag-suffix: "-minimal"
+            variant: "minimal"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=${{ matrix.tag-suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.tag-suffix }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.tag-suffix }}
+            type=sha,suffix=${{ matrix.tag-suffix }}
+            type=raw,value=latest${{ matrix.tag-suffix }},enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Get and report image size
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "## Docker Image Size Report (${{ matrix.variant }})" >> $GITHUB_STEP_SUMMARY
+          TAGS="${{ steps.meta.outputs.tags }}"
+          FIRST_TAG=$(echo "$TAGS" | head -n 1)
+          SIZE=$(docker inspect "$FIRST_TAG" --format='{{.Size}}' 2>/dev/null || echo "N/A")
+          if [ "$SIZE" != "N/A" ]; then
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            echo "- **${{ matrix.variant }}**: ${SIZE_MB}MB" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- Tags: $(echo "$TAGS" | tr '\n' ', ' | sed 's/,$//')" >> $GITHUB_STEP_SUMMARY
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create checksums and release
+        run: |
+          find artifacts -type f \( -name "*.so" -o -name "*.control" -o -name "*.sql" \) \
+            -exec sha256sum {} \; > SHA256SUMS
+          
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/**/*.so
+            artifacts/**/*.control
+            artifacts/**/*.sql
+            SHA256SUMS
+          body: |
+            Pre-built binaries for **Linux x86_64**.
+            
+            **Quick Install (Linux):**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/install.sh | bash -s -- --version ${{ github.ref_name }}
+            ```
+            
+            **Docker:**
+            ```bash
+            docker run -e POSTGRES_PASSWORD=postgres -e PG_ASK_AI_KEY="your-api-key" \
+              ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
