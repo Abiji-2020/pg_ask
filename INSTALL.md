@@ -5,20 +5,30 @@
 ### Linux
 ```bash
 # One-liner installation (auto-detects your platform)
-curl -fsSL https://$GITHUB_PAGES_URL/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Abiji-2020/pg_ask/gh-pages/install.sh | bash
 ```
 
 ### Windows
 For Windows, use Docker or WSL2 with the Linux installation method.
 
-### Docker
+### Docker (Full)
 ```bash
-docker pull ghcr.io/$GITHUB_REPOSITORY:latest
+docker pull ghcr.io/Abiji-2020/pg_ask:latest
 docker run -it \
   -e POSTGRES_PASSWORD=postgres \
   -e PG_ASK_AI_KEY="your-api-key" \
   -p 5432:5432 \
-  ghcr.io/$GITHUB_REPOSITORY:latest
+  ghcr.io/Abiji-2020/pg_ask:latest
+```
+
+### Docker (Minimal)
+```bash
+docker pull ghcr.io/Abiji-2020/pg_ask:latest-minimal
+docker run -it \
+  -e POSTGRES_PASSWORD=postgres \
+  -e PG_ASK_AI_KEY="your-api-key" \
+  -p 5432:5432 \
+  ghcr.io/Abiji-2020/pg_ask:latest-minimal
 ```
 
 ### With docker-compose
@@ -28,7 +38,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: ghcr.io/$GITHUB_REPOSITORY:latest
+    image: ghcr.io/Abiji-2020/pg_ask:latest
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -59,10 +69,10 @@ docker-compose up
 
 ## Direct Downloads
 
-All pre-built binaries are available at:
-**https://$GITHUB_PAGES_URL/releases/**
-
-Or browse: **https://$GITHUB_PAGES_URL/**
+All pre-built binaries and Docker images are available at:
+- **Releases**: https://github.com/Abiji-2020/pg_ask/releases
+- **GitHub Pages**: https://abiji-2020.github.io/pg_ask/
+- **Docker Registry**: https://github.com/Abiji-2020/pg_ask/pkgs/container/pg_ask
 
 ## Manual Installation
 
@@ -179,6 +189,7 @@ docker logs pg_ask_postgres
 
 ## Support
 
-- Issues: https://github.com/$GITHUB_REPOSITORY/issues
-- Releases: https://github.com/$GITHUB_REPOSITORY/releases
-- Pages: https://$GITHUB_PAGES_URL/pg_ask/
+- Issues: https://github.com/Abiji-2020/pg_ask/issues
+- Releases: https://github.com/Abiji-2020/pg_ask/releases
+- GitHub Pages: https://abiji-2020.github.io/pg_ask/
+- Docker Images: ghcr.io/Abiji-2020/pg_ask:latest (or with -minimal suffix)
