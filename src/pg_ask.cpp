@@ -6,11 +6,7 @@ extern "C" {
 #include "varatt.h"
 }
 #include <string>
-
-#include "factory.hpp"
-#include "prompt_builder.hpp"
-#include "schema_loader.hpp"
-#include "sql_executor.hpp"
+#include <explorer.h>
 
 // Mandatory module magic
 
@@ -23,7 +19,8 @@ Datum pg_gen_query(PG_FUNCTION_ARGS) {
     text* input = PG_GETARG_TEXT_PP(0);
 
     std::string userQuery(VARDATA_ANY(input), VARSIZE_ANY_EXHDR(input));
-
-    PG_RETURN_TEXT_P(cstring_to_text(userQuery.c_str()));
+    std::string tablenames = buildDatabaseMap();
+    std::string formatted_table = formatSchema(tablenames);
+    PG_RETURN_TEXT_P(cstring_to_text(formatted_table.c_str()));
 }
 }
