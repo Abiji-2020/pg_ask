@@ -1,42 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>pg_ask Releases</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f5f5;color:#333}
-    .container{max-width:900px;margin:0 auto;padding:2rem;background:white;min-height:100vh}
-    h1{color:#0066cc;border-bottom:3px solid #0066cc;padding-bottom:1rem;margin-bottom:1rem}
-    .section{margin:2rem 0}
-    .quick-install{background:#e8f4f8;padding:1.5rem;border-radius:8px;border-left:4px solid #0066cc;margin:1rem 0}
-    .quick-install strong{display:block;margin-bottom:0.5rem}
-    .quick-install code{background:white;padding:0.5rem;border-radius:4px;font-family:monospace;display:block;overflow-x:auto}
-    .platform{margin:1.5rem 0;padding:1.5rem;border:1px solid #ddd;border-radius:8px;background:#fafafa}
-    .platform h3{color:#0066cc;margin-bottom:1rem}
-    .file{margin:0.75rem 0;display:flex;align-items:center}
-    .file-icon{margin-right:0.5rem;font-size:1.2em}
-    .file a{color:#0066cc;text-decoration:none;font-family:monospace;word-break:break-all}
-    .file a:hover{text-decoration:underline;color:#004c99}
-    footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #ddd;text-align:center;font-size:0.9rem;color:#666}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pg_ask - PostgreSQL AI Extension</title>
+    <style>
+      body { font-family: system-ui; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+      .section { margin: 2rem 0; }
+      .platform { border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+      .file { margin: 0.5rem 0; }
+      .file-icon { margin-right: 0.5rem; }
+      pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+      footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ddd; color: #666; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📦 pg_ask Extension Releases</h1>
-    <p>Pre-built PostgreSQL extension binaries for Linux.</p>
+    <h1>pg_ask - PostgreSQL AI Extension</h1>
+    <p>Repository: <a href="https://github.com/{{REPO}}">{{REPO}}</a></p>
     
     <div class="section">
-      <h2>⚡ Quick Install</h2>
-      <div class="quick-install">
-        <strong>Linux:</strong>
-        <code>curl -fsSL https://abiji-2020.github.io/{{REPO}}/install.sh | bash</code>
-      </div>
-      <div class="quick-install">
-        <strong>Windows:</strong>
-        Use Docker: <code>docker pull ghcr.io/{{REPO}}:latest</code>
-      </div>
+      <h2>🚀 Quick Install</h2>
+      <pre><code>curl -sSL {{PAGES_URL}}/install.sh | bash</code></pre>
     </div>
     
     <div class="section">
@@ -50,24 +34,43 @@
     </footer>
     
     <script>
-      fetch('manifest.json')
+      function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+      }
+
+      fetch('{{PAGES_URL}}/manifest.json')
         .then(r => r.json())
         .then(data => {
-          const html = data.releases.map(r => `
+          document.getElementById('version').textContent = data.version || 'unknown';
+          
+          const releasesDiv = document.getElementById('releases');
+          if (!data.releases || Object.keys(data.releases).length === 0) {
+            releasesDiv.innerHTML = '<p>No releases available yet.</p>';
+            return;
+          }
+          
+          const html = Object.entries(data.releases).map(([arch, files]) => `
             <div class="platform">
-              <h3>${r.platform}</h3>
-              <div class="file"><span class="file-icon">📦</span><a href="${r.binary}">${r.binary}</a></div>
-              <div class="file"><span class="file-icon">📄</span><a href="${r.control}">${r.control}</a></div>
-              <div class="file"><span class="file-icon">📋</span><a href="${r.sql}">${r.sql}</a></div>
+              <h3>${arch}</h3>
+              ${files.map(f => `
+                <div class="file">
+                  <span class="file-icon">📦</span>
+                  <a href="${f.url}">${f.name}</a>
+                  ${f.size ? `<span style="color: #666; font-size: 0.9em; margin-left: 0.5rem;">(${formatBytes(f.size)})</span>` : ''}
+                </div>
+              `).join('')}
             </div>
           `).join('');
-          document.getElementById('releases').innerHTML = html;
-          if (data.version) {
-            document.getElementById('version').textContent = data.version;
-          }
+          releasesDiv.innerHTML = html;
         })
-        .catch(e => console.error('Failed to load releases:', e));
+        .catch(e => {
+          console.error('Failed to load releases:', e);
+          document.getElementById('releases').innerHTML = '<p>Failed to load releases.</p>';
+        });
     </script>
-  </div>
 </body>
 </html>

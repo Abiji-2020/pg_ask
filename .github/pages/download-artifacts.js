@@ -12,8 +12,10 @@ const actionsApi = github.rest.actions;
   let runId = null;
   if (context.payload && context.payload.workflow_run && context.payload.workflow_run.id) {
     runId = context.payload.workflow_run.id;
+    core.info(`Using workflow run ID from payload: ${runId}`);
   } else {
     // Look up the most recent completed run of the build workflow on main
+    core.info('Looking up latest completed build workflow run...');
     const runs = await actionsApi.listWorkflowRuns({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -25,18 +27,24 @@ const actionsApi = github.rest.actions;
 
     if (runs && runs.data && runs.data.workflow_runs && runs.data.workflow_runs.length > 0) {
       runId = runs.data.workflow_runs[0].id;
+      core.info(`Found workflow run ID: ${runId}`);
     } else {
       throw new Error('No completed workflow run found for build-and-release.yml on branch main');
     }
   }
 
+  core.info(`Fetching artifacts from run ID: ${runId}`);
   const artifacts = await actionsApi.listWorkflowRunArtifacts({
     owner: context.repo.owner,
     repo: context.repo.repo,
     run_id: runId,
   });
 
+  core.info(`Found ${artifacts.data.artifacts.length} artifacts`);
+  
   for (const artifact of artifacts.data.artifacts) {
+    core.info(`Downloading artifact: ${artifact.name} (ID: ${artifact.id})`);
+    
     const download = await actionsApi.downloadArtifact({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -45,6 +53,10 @@ const actionsApi = github.rest.actions;
     });
 
     const buffer = Buffer.from(download.data);
-    fs.writeFileSync(`${artifact.name}.zip`, buffer);
+    const filename = `${artifact.name}.zip`;
+    fs.writeFileSync(filename, buffer);
+    core.info(`Saved artifact to ${filename} (${buffer.length} bytes)`);
   }
+  
+  core.info('All artifacts downloaded successfully');
 })();

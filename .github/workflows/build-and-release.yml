@@ -47,11 +47,6 @@ jobs:
             -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS ..
           make -j$PARALLEL_JOBS
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pg_ask-${{ matrix.platform.arch }}
-          path: release/
       - name: Prepare release folder
         run: |
           rm -rf release || true
@@ -59,6 +54,11 @@ jobs:
           cp build/pg_ask.so release/
           cp pg/pg_ask.control release/
           cp pg/pg_ask--1.0.sql release/
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pg_ask-${{ matrix.platform.arch }}
+          path: release/
 
   build-docker:
     runs-on: ubuntu-latest

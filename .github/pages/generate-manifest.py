@@ -1,34 +1,47 @@
 #!/usr/bin/env python3
 import os
 import json
+import glob
+from datetime import datetime
 
-version = os.environ.get('VERSION', '')
-base = 'releases'
-releases = []
+def main():
+    repo = os.getenv('REPO', 'abiji-2020/pg_ask')
+    version = os.getenv('VERSION', 'main')
+    pages_url = os.getenv('PAGES_URL', 'https://abiji-2020.github.io/pg_ask')
+    
+    manifest = {
+        'repository': repo,
+        'version': version,
+        'base_url': pages_url,
+        'generated_at': datetime.utcnow().isoformat() + 'Z',
+        'releases': {}
+    }
+    
+    # Scan releases directory
+    for arch_dir in glob.glob('releases/*'):
+        if os.path.isdir(arch_dir):
+            arch = os.path.basename(arch_dir)
+            files = []
+            for file in glob.glob(f'{arch_dir}/*'):
+                if os.path.isfile(file):
+                    file_stat = os.stat(file)
+                    files.append({
+                        'name': os.path.basename(file),
+                        'path': f'releases/{arch}/{os.path.basename(file)}',
+                        'url': f'{pages_url}/releases/{arch}/{os.path.basename(file)}',
+                        'size': file_stat.st_size
+                    })
+            
+            if files:
+                manifest['releases'][arch] = files
+                print(f"  {arch}: {len(files)} files")
+    
+    # Write manifest
+    with open('manifest.json', 'w') as f:
+        json.dump(manifest, f, indent=2)
+    
+    print(f"\nGenerated manifest.json with {len(manifest['releases'])} architectures")
+    print(f"Total files: {sum(len(files) for files in manifest['releases'].values())}")
 
-if os.path.isdir(base):
-    for arch in sorted(os.listdir(base)):
-        d = os.path.join(base, arch)
-        if not os.path.isdir(d):
-            continue
-        binary = None
-        control = None
-        sql = None
-        for f in os.listdir(d):
-            if f.endswith('.so'):
-                binary = f
-            elif f.endswith('.control'):
-                control = f
-            elif f.endswith('.sql'):
-                sql = f
-        releases.append({
-            'platform': arch,
-            'binary': f"{base}/{arch}/{binary}" if binary else None,
-            'control': f"{base}/{arch}/{control}" if control else None,
-            'sql': f"{base}/{arch}/{sql}" if sql else None,
-        })
-
-out = {'version': version, 'releases': releases}
-
-with open('manifest.json', 'w') as fh:
-    json.dump(out, fh, indent=2)
+if __name__ == '__main__':
+    main()

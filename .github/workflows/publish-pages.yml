@@ -3,6 +3,11 @@ name: Publish to GitHub Pages
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Build, Test & Release pg_ask Extension"]
+    types:
+      - completed
+    branches: [main]
 
 permissions:
   contents: write
@@ -32,28 +37,43 @@ jobs:
 
       - name: Extract and organize artifacts
         run: |
-          mkdir -p artifacts releases
+          mkdir -p releases/linux-x86_64
+          
+          # Extract artifacts and organize into platform-specific folders
           for zip in pg_ask-*.zip; do
-            unzip -q "$zip" -d "artifacts/${zip%.zip}"
+            [ -f "$zip" ] || continue
+            
+            echo "Processing artifact: $zip"
+            
+            # Create temporary extraction directory
+            temp_dir=$(mktemp -d)
+            unzip -q "$zip" -d "$temp_dir"
+            
+            # Copy files to linux-x86_64 folder
+            find "$temp_dir" -name "*.so" -exec cp {} releases/linux-x86_64/ \;
+            find "$temp_dir" -name "*.control" -exec cp {} releases/linux-x86_64/ \;
+            find "$temp_dir" -name "*.sql" -exec cp {} releases/linux-x86_64/ \;
+            
+            # Cleanup temp directory
+            rm -rf "$temp_dir"
           done
           
-          for dir in artifacts/pg_ask-*/; do
-            arch="${dir##*/pg_ask-}"
-            mkdir -p "releases/$arch"
-            cp -r "$dir"* "releases/$arch/"
-          done
+          # Show directory structure for debugging
+          echo "Release structure:"
+          ls -lR releases/
 
       - name: Generate GitHub Pages site
         env:
-          REPO: ${{ github.repository }}
+          REPO: abiji-2020/pg_ask
           VERSION: ${{ github.ref_name }}
+          PAGES_URL: https://abiji-2020.github.io/pg_ask
         run: |
           # Copy install script from main branch
           git show main:scripts/install.sh > install.sh 2>/dev/null || echo "#!/bin/bash" > install.sh
           chmod +x install.sh
           
           # Process index.html template
-          sed "s|{{REPO}}|${{ env.REPO }}|g" .github/pages/index.html > index.html
+          sed "s|{{REPO}}|$REPO|g; s|{{PAGES_URL}}|$PAGES_URL|g" .github/pages/index.html > index.html
           
           # Build manifest.json using the repository helper
           python3 .github/pages/generate-manifest.py
@@ -65,26 +85,36 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # ensure we have the latest gh-pages branch; if it doesn't exist create it
-          git fetch origin gh-pages || true
+          # ensure we have the latest gh-pages branch
+          git fetch origin gh-pages || git checkout --orphan gh-pages
+
+          # if gh-pages exists, check it out; otherwise stay on orphan branch
           if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git checkout gh-pages
             git reset --hard origin/gh-pages
-          else
-            git checkout --orphan gh-pages
-            git rm -rf . || true
           fi
 
-          # remove all tracked files (we'll replace with the generated content)
-          git ls-files -z | xargs -0 -r rm -f || true
+          # clean working directory completely
+          git rm -rf . 2>/dev/null || true
+          rm -rf * .* 2>/dev/null || true
 
           # copy generated site files into the gh-pages checkout
-          rm -rf releases || true
-          cp -r ../releases .
-          cp ../install.sh . || true
-          cp ../index.html . || true
-          cp ../manifest.json . || true
+          cp -r ../releases . || mkdir -p releases
+          cp ../install.sh . 2>/dev/null || true
+          cp ../index.html . 2>/dev/null || true
+          cp ../manifest.json . 2>/dev/null || true
+          
+          # show what we're about to commit
+          echo "Files to commit:"
+          ls -la
+          echo "Releases directory:"
+          ls -R releases/ || echo "No releases found"
 
-          # commit and push (force to avoid divergence issues)
+          # commit and push
           git add -A
-          git commit -m "docs: publish ${{ github.ref_name }} to GitHub Pages" || true
-          git push origin HEAD:gh-pages --force
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: publish artifacts from ${{ github.sha }} to GitHub Pages"
+            git push origin gh-pages --force
+          fi
