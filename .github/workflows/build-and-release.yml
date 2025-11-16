@@ -79,6 +79,7 @@ jobs:
           brew update
           # Install PostgreSQL headers, CMake and gettext (provides libintl.h)
           brew install postgresql@16 cmake gettext
+          brew link --force gettext
 
       - name: Build extension
         run: |
@@ -88,6 +89,9 @@ jobs:
           export CPPFLAGS="-I$(brew --prefix gettext)/include $CPPFLAGS"
           export LDFLAGS="-L$(brew --prefix gettext)/lib $LDFLAGS"
           export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
+          # Force Clang to use these flags when compiling C/C++ sources
+          export CFLAGS="$CPPFLAGS $CFLAGS"
+          export CXXFLAGS="$CPPFLAGS $CXXFLAGS"
           mkdir build && cd build
           cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) -DCMAKE_PREFIX_PATH="$(brew --prefix gettext)" ..
           make -j$(sysctl -n hw.ncpu)

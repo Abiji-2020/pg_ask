@@ -35,10 +35,10 @@ COPY --from=builder /build/pg/pg_ask--1.0.sql /usr/share/postgresql/16/extension
 RUN mkdir -p /docker-entrypoint-initdb.d
 COPY docker/init-extension.sql /docker-entrypoint-initdb.d/10-pg_ask.sql
 
-# Metadata labels
+# Metadata labels (static, GitHub metadata will override on publish)
 LABEL org.opencontainers.image.title="pg_ask" \
-      org.opencontainers.image.description="PostgreSQL extension with AI-powered SQL generation" \
-      org.opencontainers.image.url="https://github.com/${{ github.repository }}"
+    org.opencontainers.image.description="PostgreSQL extension with AI-powered SQL generation" \
+    org.opencontainers.image.url="https://github.com/Abiji-2020/pg_ask"
 
 # Use default postgres entrypoint
 # Users should provide environment variables:
