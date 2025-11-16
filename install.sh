@@ -7,8 +7,8 @@ set -e
 
 VERSION="latest"
 PG_VERSION=$(pg_config --version 2>/dev/null | grep -oP '\d+' | head -1 || echo "16")
-REPO_URL="https://github.com/$GITHUB_REPOSITORY"
-RELEASE_URL="${REPO_URL}/releases/download"
+GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-Abiji-2020/pg_ask}"
+PAGES_URL="https://abiji-2020.github.io/pg_ask"
 
 # Color output
 RED='\033[0;31m'
@@ -57,7 +57,7 @@ esac
 log_info "Detected platform: $PLATFORM"
 
 # Download extension
-DOWNLOAD_URL="${RELEASE_URL}/${VERSION}/${PLATFORM}/${EXTENSION_FILE}"
+DOWNLOAD_URL="${PAGES_URL}/releases/${PLATFORM}/${EXTENSION_FILE}"
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
@@ -67,9 +67,9 @@ if ! curl -fsSL -o "$TEMP_DIR/$EXTENSION_FILE" "$DOWNLOAD_URL"; then
 fi
 
 # Download SQL and control files
-curl -fsSL -o "$TEMP_DIR/pg_ask.control" "${RELEASE_URL}/${VERSION}/${PLATFORM}/pg_ask.control" || \
+curl -fsSL -o "$TEMP_DIR/pg_ask.control" "${PAGES_URL}/releases/${PLATFORM}/pg_ask.control" || \
     log_error "Failed to download pg_ask.control"
-curl -fsSL -o "$TEMP_DIR/pg_ask--1.0.sql" "${RELEASE_URL}/${VERSION}/${PLATFORM}/pg_ask--1.0.sql" || \
+curl -fsSL -o "$TEMP_DIR/pg_ask--1.0.sql" "${PAGES_URL}/releases/${PLATFORM}/pg_ask--1.0.sql" || \
     log_error "Failed to download pg_ask--1.0.sql"
 
 # Install files
