@@ -70,9 +70,24 @@ target_link_libraries(pg_ask PRIVATE
     ai-sdk-cpp
 )
 
-# On macOS, explicitly link PostgreSQL server libraries (not needed on Linux)
+# On macOS, explicitly link PostgreSQL server libraries
 if(APPLE)
-    target_link_libraries(pg_ask PRIVATE pgcommon pgport)
+    find_library(PGCOMMON pgcommon HINTS ${PG_LIB_DIR} NO_DEFAULT_PATH)
+    find_library(PGPORT pgport HINTS ${PG_LIB_DIR} NO_DEFAULT_PATH)
+    
+    if(PGCOMMON)
+        message(STATUS "Found pgcommon: ${PGCOMMON}")
+        target_link_libraries(pg_ask PRIVATE ${PGCOMMON})
+    else()
+        message(WARNING "pgcommon not found in ${PG_LIB_DIR}")
+    endif()
+    
+    if(PGPORT)
+        message(STATUS "Found pgport: ${PGPORT}")
+        target_link_libraries(pg_ask PRIVATE ${PGPORT})
+    else()
+        message(WARNING "pgport not found in ${PG_LIB_DIR}")
+    endif()
 endif()
 
 # On macOS, PostgreSQL headers include libintl.h; ensure gettext headers/libs are available
