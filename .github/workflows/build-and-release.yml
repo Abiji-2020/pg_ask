@@ -15,26 +15,21 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Git
-        run: |
-          apt-get update
-          apt-get install -y git
-      
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       
       - name: Install dependencies
         run: |
-          apt-get update
+          sudo apt-get update
           # Install newer GCC/G++ (prefer 13), CMake and PostgreSQL server dev headers
-          apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-13 g++-13 git || \
-            apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-12 g++-12 git
+          sudo apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-13 g++-13 git || \
+            sudo apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-12 g++-12 git
           # Make sure alternatives exist (optional) and show versions
-          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 || true
-          update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 || true
-          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 90 || true
-          update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 90 || true
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 || true
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 || true
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 90 || true
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 90 || true
           gcc --version || true
           g++ --version || true
 
@@ -94,7 +89,7 @@ jobs:
           export LDFLAGS="-L$(brew --prefix gettext)/lib $LDFLAGS"
           export PKG_CONFIG_PATH="$(brew --prefix gettext)/lib/pkgconfig:$PKG_CONFIG_PATH"
           mkdir build && cd build
-          cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) ..
+          cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) -DCMAKE_PREFIX_PATH="$(brew --prefix gettext)" ..
           make -j$(sysctl -n hw.ncpu)
       
       - name: Create release artifact

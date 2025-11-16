@@ -70,6 +70,21 @@ target_link_libraries(pg_ask PRIVATE
     ai-sdk-cpp
 )
 
+# On macOS, PostgreSQL headers include libintl.h; ensure gettext headers/libs are available
+if(APPLE)
+    # Prefer CMake's FindGettext to locate Homebrew gettext (keg-only)
+    find_package(Gettext QUIET)
+    if(GETTEXT_FOUND)
+        message(STATUS "Found Gettext: include=${GETTEXT_INCLUDE_DIR} lib=${GETTEXT_LIBRARY}")
+        target_include_directories(pg_ask PRIVATE ${GETTEXT_INCLUDE_DIR})
+        if(GETTEXT_LIBRARY)
+            target_link_libraries(pg_ask PRIVATE ${GETTEXT_LIBRARY})
+        endif()
+    else()
+        message(WARNING "Gettext not found. If build fails with 'libintl.h not found', install via 'brew install gettext' and pass -DCMAKE_PREFIX_PATH=$(brew --prefix gettext)")
+    endif()
+endif()
+
 # The Postgres extension .so must be output into the PostgreSQL pkglibdir
 set_target_properties(pg_ask PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
