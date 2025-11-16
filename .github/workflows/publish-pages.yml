@@ -92,14 +92,14 @@ jobs:
             git clean -fd
             git fetch origin gh-pages
             git checkout gh-pages
-            # Clean all existing content
-            git rm -rf . 2>/dev/null || true
-            rm -rf * .* 2>/dev/null || true
+            # Clean all existing content (but preserve .git)
+            find . -maxdepth 1 ! -name '.git' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
           else
             echo "gh-pages branch doesn't exist, creating orphan branch..."
             git checkout --orphan gh-pages
             git rm -rf . 2>/dev/null || true
-            rm -rf * .* 2>/dev/null || true
+            # Clean all existing content (but preserve .git)
+            find . -maxdepth 1 ! -name '.git' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
           fi
           
           # Copy generated site files from safe location
