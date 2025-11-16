@@ -13,32 +13,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+
+      - uses: actions/checkout@v4
+        with:
           ref: gh-pages
           fetch-depth: 0
+          path: gh-pages
 
       - name: Download artifacts
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const path = require('path');
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: 'build-and-release.yml',
-            });
-            
-            for (const artifact of artifacts.data.artifacts) {
-              const download = await github.rest.actions.downloadArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: artifact.id,
-                archive_format: 'zip',
-              });
-              
-              const buffer = Buffer.from(download.data);
-              fs.writeFileSync(`${artifact.name}.zip`, buffer);
-            }
+            const scriptPath = './.github/pages/download-artifacts.js';
+            const scriptContent = fs.readFileSync(scriptPath, 'utf8');
+            eval(scriptContent);
 
       - name: Extract and organize artifacts
         run: |
@@ -56,107 +46,27 @@ jobs:
       - name: Generate GitHub Pages site
         env:
           REPO: ${{ github.repository }}
+          VERSION: ${{ github.ref_name }}
         run: |
           # Copy install script from main branch
           git show main:scripts/install.sh > install.sh 2>/dev/null || echo "#!/bin/bash" > install.sh
           chmod +x install.sh
           
-          # Generate index.html
-          cat > index.html << 'HTML'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>pg_ask Releases</title>
-            <style>
-              *{margin:0;padding:0;box-sizing:border-box}
-              body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f5f5;color:#333}
-              .container{max-width:900px;margin:0 auto;padding:2rem;background:white;min-height:100vh}
-              h1{color:#0066cc;border-bottom:3px solid #0066cc;padding-bottom:1rem;margin-bottom:1rem}
-              .section{margin:2rem 0}
-              .quick-install{background:#e8f4f8;padding:1.5rem;border-radius:8px;border-left:4px solid #0066cc;margin:1rem 0}
-              .quick-install strong{display:block;margin-bottom:0.5rem}
-              .quick-install code{background:white;padding:0.5rem;border-radius:4px;font-family:monospace;display:block;overflow-x:auto}
-              .platform{margin:1.5rem 0;padding:1.5rem;border:1px solid #ddd;border-radius:8px;background:#fafafa}
-              .platform h3{color:#0066cc;margin-bottom:1rem}
-              .file{margin:0.75rem 0;display:flex;align-items:center}
-              .file-icon{margin-right:0.5rem;font-size:1.2em}
-              .file a{color:#0066cc;text-decoration:none;font-family:monospace;word-break:break-all}
-              .file a:hover{text-decoration:underline;color:#004c99}
-              footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #ddd;text-align:center;font-size:0.9rem;color:#666}
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1>📦 pg_ask Extension Releases</h1>
-              <p>Pre-built PostgreSQL extension binaries for Linux.</p>
-              
-              <div class="section">
-                <h2>⚡ Quick Install</h2>
-                <div class="quick-install">
-                  <strong>Linux:</strong>
-                  <code>curl -fsSL https://raw.githubusercontent.com/${{ env.REPO }}/gh-pages/install.sh | bash</code>
-                </div>
-                <div class="quick-install">
-                  <strong>Windows:</strong>
-                  Use Docker: <code>docker pull ghcr.io/${{ env.REPO }}:latest</code>
-                </div>
-              </div>
-              
-              <div class="section">
-                <h2>📥 Available Builds</h2>
-                <div id="releases"></div>
-              </div>
-              
-              <footer>
-                Latest release: <strong id="version">loading...</strong> | 
-                <a href="https://github.com/${{ env.REPO }}">View on GitHub</a>
-              </footer>
-              
-              <script>
-                fetch('manifest.json')
-                  .then(r => r.json())
-                  .then(data => {
-                    const html = data.releases.map(r => `
-                      <div class="platform">
-                        <h3>${r.platform}</h3>
-                        <div class="file"><span class="file-icon">📦</span><a href="${r.binary}">${r.binary}</a></div>
-                        <div class="file"><span class="file-icon">📄</span><a href="${r.control}">${r.control}</a></div>
-                        <div class="file"><span class="file-icon">📋</span><a href="${r.sql}">${r.sql}</a></div>
-                      </div>
-                    `).join('');
-                    document.getElementById('releases').innerHTML = html;
-                    if (data.version) {
-                      document.getElementById('version').textContent = data.version;
-                    }
-                  })
-                  .catch(e => console.error('Failed to load releases:', e));
-              </script>
-            </div>
-          </body>
-          </html>
-          HTML
+          # Process index.html template
+          sed "s|{{REPO}}|${{ env.REPO }}|g" .github/pages/index.html > index.html
           
-          # Generate manifest.json
-          cat > manifest.json << 'JSON'
-          {
-            "version": "${{ github.ref_name }}",
-            "releases": [
-              {
-                "platform": "Linux x86_64",
-                "binary": "linux-x86_64/pg_ask.so",
-                "control": "linux-x86_64/pg_ask.control",
-                "sql": "linux-x86_64/pg_ask--1.0.sql"
-              }
-            ]
-          }
-          JSON
+          # Process manifest.json template
+          sed "s|{{VERSION}}|${{ env.VERSION }}|g" .github/pages/manifest.json > manifest.json
 
       - name: Commit and push to gh-pages
         run: |
+          cd gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp ../releases/ . -r
+          cp ../install.sh .
+          cp ../index.html .
+          cp ../manifest.json .
           git add releases/ install.sh index.html manifest.json
           git commit -m "docs: publish ${{ github.ref_name }} to GitHub Pages" || true
           git push origin gh-pages
