@@ -28,12 +28,22 @@ jobs:
       
       - name: Install dependencies
         run: |
-          apt-get install -y build-essential cmake postgresql-server-dev-16
-      
+          apt-get update
+          # Install newer GCC/G++ and other build deps
+          apt-get install -y build-essential cmake postgresql-server-dev-16 gcc-12 g++-12 git
+          # Make sure alternatives exist (optional) and show versions
+          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 || true
+          update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100 || true
+          gcc --version || true
+          g++ --version || true
+
       - name: Build extension
         run: |
+          # Force CMake to use GCC-12/G++-12 for this build
+          export CC=/usr/bin/gcc-12
+          export CXX=/usr/bin/g++-12
           mkdir build && cd build
-          cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(nproc) -DCMAKE_CXX_STANDARD=20 ..
+          cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_PARALLEL_LEVEL=$(nproc) ..
           make -j$(nproc)
       
       - name: Create release artifact
@@ -59,12 +69,11 @@ jobs:
       - name: Install dependencies
         run: |
           brew install postgresql@16 cmake
-          # Link PostgreSQL 16 headers explicitly
-          export PG_CONFIG=$(brew --prefix postgresql@16)/bin/pg_config
-          echo "PG_CONFIG=$PG_CONFIG" >> $GITHUB_ENV
       
       - name: Build extension
         run: |
+          # Add PostgreSQL 16 bin directory to PATH
+          export PATH="$(brew --prefix postgresql@16)/bin:$PATH"
           mkdir build && cd build
           cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) -DCMAKE_CXX_STANDARD=20 ..
           make -j$(sysctl -n hw.ncpu)
