@@ -20,12 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          fetch-depth: 0
-          path: gh-pages
-
       - name: Download artifacts
         uses: actions/github-script@v7
         with:
@@ -80,39 +74,39 @@ jobs:
 
       - name: Commit and push to gh-pages
         run: |
-          cd gh-pages
-          # configure committer
+          # Configure git
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # ensure we have the latest gh-pages branch
-          git fetch origin gh-pages || git checkout --orphan gh-pages
-
-          # if gh-pages exists, check it out; otherwise stay on orphan branch
-          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
-            git checkout gh-pages
-            git reset --hard origin/gh-pages
-          fi
-
-          # clean working directory completely
-          git rm -rf . 2>/dev/null || true
-          rm -rf * .* 2>/dev/null || true
-
-          # copy generated site files into the gh-pages checkout
-          cp -r ../releases . || mkdir -p releases
-          cp ../install.sh . 2>/dev/null || true
-          cp ../index.html . 2>/dev/null || true
-          cp ../manifest.json . 2>/dev/null || true
           
-          # show what we're about to commit
+          # Check if gh-pages branch exists on remote
+          if git ls-remote --heads origin gh-pages | grep gh-pages; then
+            echo "gh-pages branch exists, checking it out..."
+            git fetch origin gh-pages
+            git checkout gh-pages
+          else
+            echo "gh-pages branch doesn't exist, creating orphan branch..."
+            git checkout --orphan gh-pages
+            git rm -rf . 2>/dev/null || true
+          fi
+          
+          # Clean the working directory
+          rm -rf * .* 2>/dev/null || true
+          
+          # Copy generated site files
+          cp -r releases . || mkdir -p releases
+          cp install.sh . 2>/dev/null || true
+          cp index.html . 2>/dev/null || true
+          cp manifest.json . 2>/dev/null || true
+          
+          # Show what we're about to commit
           echo "Files to commit:"
           ls -la
           echo "Releases directory:"
           ls -R releases/ || echo "No releases found"
-
-          # commit and push
+          
+          # Commit and push
           git add -A
-          if git diff --staged --quiet; then
+          if git diff --staged --quiet 2>/dev/null; then
             echo "No changes to commit"
           else
             git commit -m "docs: publish artifacts from ${{ github.sha }} to GitHub Pages"
