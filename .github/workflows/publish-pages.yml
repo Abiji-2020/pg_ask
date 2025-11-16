@@ -78,25 +78,32 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
+          # Store generated files in a safe location
+          mkdir -p /tmp/gh-pages-content
+          cp -r releases /tmp/gh-pages-content/ 2>/dev/null || mkdir -p /tmp/gh-pages-content/releases
+          cp install.sh /tmp/gh-pages-content/ 2>/dev/null || true
+          cp index.html /tmp/gh-pages-content/ 2>/dev/null || true
+          cp manifest.json /tmp/gh-pages-content/ 2>/dev/null || true
+          
           # Check if gh-pages branch exists on remote
           if git ls-remote --heads origin gh-pages | grep gh-pages; then
             echo "gh-pages branch exists, checking it out..."
+            # Remove untracked files that might conflict
+            git clean -fd
             git fetch origin gh-pages
             git checkout gh-pages
+            # Clean all existing content
+            git rm -rf . 2>/dev/null || true
+            rm -rf * .* 2>/dev/null || true
           else
             echo "gh-pages branch doesn't exist, creating orphan branch..."
             git checkout --orphan gh-pages
             git rm -rf . 2>/dev/null || true
+            rm -rf * .* 2>/dev/null || true
           fi
           
-          # Clean the working directory
-          rm -rf * .* 2>/dev/null || true
-          
-          # Copy generated site files
-          cp -r releases . || mkdir -p releases
-          cp install.sh . 2>/dev/null || true
-          cp index.html . 2>/dev/null || true
-          cp manifest.json . 2>/dev/null || true
+          # Copy generated site files from safe location
+          cp -r /tmp/gh-pages-content/* . 2>/dev/null || true
           
           # Show what we're about to commit
           echo "Files to commit:"
