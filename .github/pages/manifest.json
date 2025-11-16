@@ -3,9 +3,9 @@
   "releases": [
     {
       "platform": "Linux x86_64",
-      "binary": "linux-x86_64/pg_ask.so",
-      "control": "linux-x86_64/pg_ask.control",
-      "sql": "linux-x86_64/pg_ask--1.0.sql"
+      "binary": "releases/linux-x86_64/build/pg_ask.so",
+      "control": "releases/linux-x86_64/pg/pg_ask.control",
+      "sql": "releases/linux-x86_64/pg/pg_ask--1.0.sql"
     }
   ]
 }

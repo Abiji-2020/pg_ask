@@ -55,18 +55,36 @@ jobs:
           # Process index.html template
           sed "s|{{REPO}}|${{ env.REPO }}|g" .github/pages/index.html > index.html
           
-          # Process manifest.json template
-          sed "s|{{VERSION}}|${{ env.VERSION }}|g" .github/pages/manifest.json > manifest.json
+          # Build manifest.json using the repository helper
+          python3 .github/pages/generate-manifest.py
 
       - name: Commit and push to gh-pages
         run: |
           cd gh-pages
+          # configure committer
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp ../releases/ . -r
-          cp ../install.sh .
-          cp ../index.html .
-          cp ../manifest.json .
-          git add releases/ install.sh index.html manifest.json
+
+          # ensure we have the latest gh-pages branch; if it doesn't exist create it
+          git fetch origin gh-pages || true
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git reset --hard origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . || true
+          fi
+
+          # remove all tracked files (we'll replace with the generated content)
+          git ls-files -z | xargs -0 -r rm -f || true
+
+          # copy generated site files into the gh-pages checkout
+          rm -rf releases || true
+          cp -r ../releases .
+          cp ../install.sh . || true
+          cp ../index.html . || true
+          cp ../manifest.json . || true
+
+          # commit and push (force to avoid divergence issues)
+          git add -A
           git commit -m "docs: publish ${{ github.ref_name }} to GitHub Pages" || true
-          git push origin gh-pages
+          git push origin HEAD:gh-pages --force

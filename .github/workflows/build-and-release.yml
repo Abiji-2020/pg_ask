@@ -51,10 +51,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pg_ask-${{ matrix.platform.arch }}
-          path: |
-            build/pg_ask.so
-            pg/pg_ask.control
-            pg/pg_ask--1.0.sql
+          path: release/
+      - name: Prepare release folder
+        run: |
+          rm -rf release || true
+          mkdir -p release
+          cp build/pg_ask.so release/
+          cp pg/pg_ask.control release/
+          cp pg/pg_ask--1.0.sql release/
 
   build-docker:
     runs-on: ubuntu-latest
