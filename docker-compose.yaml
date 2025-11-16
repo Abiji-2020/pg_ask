@@ -4,7 +4,7 @@ services:
   postgres:
     build:
       context: .
-      dockerfile: docker/Dockerfile.pg_ask
+      dockerfile: docker/Dockerfile.minimal
     container_name: pg_ask_postgres
     environment:
       POSTGRES_USER: abi
