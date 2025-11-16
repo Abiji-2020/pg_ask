@@ -2,8 +2,6 @@ name: Publish to GitHub Pages
 
 on:
   workflow_run:
-    workflows: [Build, Test & Release pg_ask Extension]
-    types: [completed]
     branches: [main]
 
 permissions:
@@ -11,7 +9,6 @@ permissions:
 
 jobs:
   publish-pages:
-    if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
