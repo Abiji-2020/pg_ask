@@ -9,7 +9,6 @@ VERSION="latest"
 PG_VERSION=$(pg_config --version 2>/dev/null | grep -oP '\d+' | head -1 || echo "16")
 REPO_URL="https://github.com/$GITHUB_REPOSITORY"
 RELEASE_URL="${REPO_URL}/releases/download"
-GITHUB_PAGES_URL="${REPO_URL}/raw/gh-pages"
 
 # Color output
 RED='\033[0;31m'

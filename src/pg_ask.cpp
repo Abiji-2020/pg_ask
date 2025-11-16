@@ -31,10 +31,8 @@ Datum pg_gen_query(PG_FUNCTION_ARGS) {
     } catch (const std::exception& e) {
         /* Surface catalog/formatting errors as a PostgreSQL ERROR */
         ereport(ERROR, (errmsg("Catalog inspection/formatting error: %s", e.what())));
-        PG_RETURN_NULL();
     } catch (...) {
         ereport(ERROR, (errmsg("Unknown error during catalog inspection/formatting")));
-        PG_RETURN_NULL();
     }
 
     try {
@@ -44,6 +42,7 @@ Datum pg_gen_query(PG_FUNCTION_ARGS) {
     } catch (const std::exception& e) {
         ereport(ERROR, (errmsg("AI integration error: %s", e.what())));
     } catch (...) {
+        ereport(ERROR, (errmsg("Unknown error during AI integration")));
         PG_RETURN_NULL();
     }
 }

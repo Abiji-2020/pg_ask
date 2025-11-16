@@ -16,7 +16,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
-    
 
   pgadmin:
     image: dpage/pgadmin4:latest
