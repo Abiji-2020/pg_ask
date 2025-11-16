@@ -17,7 +17,6 @@ jobs:
       matrix:
         platform:
           - {os: ubuntu-latest, arch: linux-x86_64, name: Linux}
-          - {os: macos-latest, arch: macos-arm64, name: macOS}
     runs-on: ${{ matrix.platform.os }}
     name: Build ${{ matrix.platform.name }}
     steps:
@@ -26,7 +25,6 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update && sudo apt-get install -y \
             build-essential cmake postgresql-server-dev-16 gcc-13 g++-13 git
@@ -34,42 +32,19 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 || true
           gcc --version && g++ --version
 
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew update && brew install postgresql@16 cmake gettext
-          brew link --force gettext
-
       - name: Setup build environment
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            if [ -x /usr/bin/gcc-13 ]; then
-              echo "CC=/usr/bin/gcc-13" >> $GITHUB_ENV
-              echo "CXX=/usr/bin/g++-13" >> $GITHUB_ENV
-            fi
-            echo "PARALLEL_JOBS=$(nproc)" >> $GITHUB_ENV
-          else
-            echo "PATH=$(brew --prefix postgresql@16)/bin:$PATH" >> $GITHUB_ENV
-            echo "CPPFLAGS=-I$(brew --prefix gettext)/include" >> $GITHUB_ENV
-            echo "LDFLAGS=-L$(brew --prefix gettext)/lib" >> $GITHUB_ENV
-            echo "CMAKE_PREFIX_PATH=$(brew --prefix gettext)" >> $GITHUB_ENV
-            echo "PARALLEL_JOBS=$(sysctl -n hw.ncpu)" >> $GITHUB_ENV
+          if [ -x /usr/bin/gcc-13 ]; then
+            echo "CC=/usr/bin/gcc-13" >> $GITHUB_ENV
+            echo "CXX=/usr/bin/g++-13" >> $GITHUB_ENV
           fi
+          echo "PARALLEL_JOBS=$(nproc)" >> $GITHUB_ENV
 
       - name: Build extension
         run: |
           mkdir -p build && cd build
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            # Define the full path to pg_config installed by Homebrew
-            PG_CONFIG_PATH=$(brew --prefix postgresql@16)/bin/pg_config
-            export CFLAGS="$CPPFLAGS" CXXFLAGS="$CPPFLAGS"
-            cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS \
-              -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
-              -DPG_CONFIG=$PG_CONFIG_PATH ..
-          else
-            cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX \
-              -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS ..
-          fi
+          cmake -DUSE_AI_SDK=ON -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX \
+            -DCMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_JOBS ..
           make -j$PARALLEL_JOBS
 
       - name: Upload artifacts
@@ -87,6 +62,15 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        include:
+          - dockerfile: ./docker/Dockerfile
+            tag-suffix: ""
+            variant: "full"
+          - dockerfile: ./docker/Dockerfile.minimal
+            tag-suffix: "-minimal"
+            variant: "minimal"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,22 +92,35 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch,suffix=${{ matrix.tag-suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.tag-suffix }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.tag-suffix }}
+            type=sha,suffix=${{ matrix.tag-suffix }}
+            type=raw,value=latest${{ matrix.tag-suffix }},enable={{is_default_branch}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile.minimal
+          file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Get and report image size
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "## Docker Image Size Report (${{ matrix.variant }})" >> $GITHUB_STEP_SUMMARY
+          TAGS="${{ steps.meta.outputs.tags }}"
+          FIRST_TAG=$(echo "$TAGS" | head -n 1)
+          SIZE=$(docker inspect "$FIRST_TAG" --format='{{.Size}}' 2>/dev/null || echo "N/A")
+          if [ "$SIZE" != "N/A" ]; then
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            echo "- **${{ matrix.variant }}**: ${SIZE_MB}MB" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- Tags: $(echo "$TAGS" | tr '\n' ', ' | sed 's/,$//')" >> $GITHUB_STEP_SUMMARY
 
   publish-release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -151,9 +148,9 @@ jobs:
             artifacts/**/*.sql
             SHA256SUMS
           body: |
-            Pre-built binaries for **Linux x86_64** and **macOS ARM64**.
+            Pre-built binaries for **Linux x86_64**.
             
-            **Quick Install (Linux/macOS):**
+            **Quick Install (Linux):**
             ```bash
             curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/install.sh | bash -s -- --version ${{ github.ref_name }}
             ```

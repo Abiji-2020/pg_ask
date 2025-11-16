@@ -93,12 +93,12 @@ jobs:
           <body>
             <div class="container">
               <h1>📦 pg_ask Extension Releases</h1>
-              <p>Pre-built PostgreSQL extension binaries for Linux and macOS.</p>
+              <p>Pre-built PostgreSQL extension binaries for Linux.</p>
               
               <div class="section">
                 <h2>⚡ Quick Install</h2>
                 <div class="quick-install">
-                  <strong>Linux/macOS:</strong>
+                  <strong>Linux:</strong>
                   <code>curl -fsSL https://raw.githubusercontent.com/${{ env.REPO }}/gh-pages/install.sh | bash</code>
                 </div>
                 <div class="quick-install">
@@ -151,12 +151,6 @@ jobs:
                 "binary": "linux-x86_64/pg_ask.so",
                 "control": "linux-x86_64/pg_ask.control",
                 "sql": "linux-x86_64/pg_ask--1.0.sql"
-              },
-              {
-                "platform": "macOS ARM64",
-                "binary": "macos-arm64/pg_ask.so",
-                "control": "macos-arm64/pg_ask.control",
-                "sql": "macos-arm64/pg_ask--1.0.sql"
               }
             ]
           }

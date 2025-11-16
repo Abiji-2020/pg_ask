@@ -50,10 +50,6 @@ case "$OS" in
         PLATFORM="linux-x86_64"
         EXTENSION_FILE="pg_ask.so"
         ;;
-    Darwin)
-        PLATFORM="macos-arm64"
-        EXTENSION_FILE="pg_ask.dylib"
-        ;;
     *)
         log_error "Unsupported platform: $OS"
         ;;

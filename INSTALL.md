@@ -2,7 +2,7 @@
 
 ## Quick Start
 
-### Linux / macOS
+### Linux
 ```bash
 # One-liner installation (auto-detects your platform)
 curl -fsSL https://$GITHUB_PAGES_URL/install.sh | bash
@@ -154,7 +154,7 @@ SELECT pg_catalog.pg_ls_dir(setting || '/extension')
 FROM pg_settings WHERE name = 'sharedir';
 ```
 
-### Permission denied errors on Linux/macOS
+### Permission denied errors on Linux
 - Ensure you have write permissions or use `sudo`
 - Try: `sudo -E bash -c 'curl ... | bash'` to preserve env vars
 
@@ -166,9 +166,6 @@ sudo apt-get install postgresql-server-dev-16
 
 # CentOS/RHEL
 sudo yum install postgresql-devel
-
-# macOS
-brew install postgresql
 ```
 
 ### Docker connection issues
