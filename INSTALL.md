@@ -8,12 +8,8 @@
 curl -fsSL https://$GITHUB_PAGES_URL/install.sh | bash
 ```
 
-### Windows (PowerShell)
-```powershell
-# Run as Administrator
-Invoke-WebRequest -Uri "https://$GITHUB_PAGES_URL/install.ps1" -OutFile "install.ps1"
-.\install.ps1
-```
+### Windows
+For Windows, use Docker or WSL2 with the Linux installation method.
 
 ### Docker
 ```bash

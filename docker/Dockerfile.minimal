@@ -17,7 +17,7 @@ COPY . .
 # Build extension
 RUN mkdir -p /build/cmake-build && \
     cd /build/cmake-build && \
-    cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -DUSE_AI_SDK=ON -DCMAKE_BUILD_PARALLEL_LEVEL=$(nproc) -DCMAKE_BUILD_TYPE=Release .. && \
     make -j$(nproc)
 
 # Final minimal image
