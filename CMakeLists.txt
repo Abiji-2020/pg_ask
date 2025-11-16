@@ -48,7 +48,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/third_party/ai-sdk-cpp ai-sdk-build)
 # ----------------------------------------------------------------------
 
 file(GLOB CORE_SOURCES src/*.cpp)
-file(GLOB CORE_HEADERS include/*.hpp)
+file(GLOB CORE_HEADERS include/*.h)
 
 # ----------------------------------------------------------------------
 # Build PostgreSQL extension (.so module)
