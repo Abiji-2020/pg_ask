@@ -18,6 +18,8 @@ jobs:
       image: postgres:16-bookworm
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Install dependencies
         run: |
@@ -47,6 +49,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Install dependencies
         run: |
@@ -77,6 +81,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Install PostgreSQL dev kit
         run: |
@@ -116,6 +122,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
@@ -169,6 +177,7 @@ jobs:
         with:
           ref: gh-pages
           fetch-depth: 0
+          submodules: recursive
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -314,6 +323,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
