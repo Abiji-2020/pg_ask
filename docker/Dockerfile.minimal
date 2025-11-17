@@ -28,8 +28,8 @@ RUN apk add --no-cache libstdc++
 
 # Copy built extension from builder
 COPY --from=builder /build/cmake-build/pg_ask.so /usr/local/lib/postgresql/
-COPY --from=builder /build/pg/pg_ask.control /usr/share/postgresql/16/extension/
-COPY --from=builder /build/pg/pg_ask--1.0.sql /usr/share/postgresql/16/extension/
+COPY --from=builder /build/pg/pg_ask.control /usr/local/share/postgresql/extension/
+COPY --from=builder /build/pg/pg_ask--1.0.sql /usr/local/share/postgresql/extension/
 
 # Create extension initialization script
 RUN mkdir -p /docker-entrypoint-initdb.d

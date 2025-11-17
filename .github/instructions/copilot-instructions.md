@@ -38,6 +38,31 @@ Postgres extension runtime notes
 - Use `cstring_to_text()` to convert returned `std::string`/`char*` results to `text*` for `PG_RETURN_TEXT_P()`.
 - Prefer building the SDK client (ai::Client) inside C++ code (no need to export it with `extern "C"`); wrap only the minimal PG-facing function in `extern "C"`.
 
+Configuration
+- The extension reads the API key from the `PG_ASK_AI_KEY` environment variable (never store in postgresql.conf for security).
+- Model and endpoint are configurable via PostgreSQL GUC (Grand Unified Configuration) variables:
+  - `pg_ask.model` (default: empty string, which triggers ai_engine to use OpenAI's default model gpt-4o) - The AI model to use
+  - `pg_ask.endpoint` (default: empty string, which triggers ai_engine to use OpenAI's endpoint https://api.openai.com/v1) - The API endpoint URL
+- These GUC variables are defined in `_PG_init()` using `DefineCustomStringVariable()` with `PGC_USERSET` context and empty string defaults.
+- Users can set these per-session (`SET pg_ask.model = '...'`), in postgresql.conf, or at database/user level (`ALTER DATABASE/USER SET ...`).
+- The C++ code reads these values from the static `char*` variables (`pg_ask_model`, `pg_ask_endpoint`) set by PostgreSQL's GUC system.
+- When both model and endpoint are empty/unset, the `ai_engine::make_engine()` function uses OpenAI defaults (gpt-4o model and https://api.openai.com/v1 endpoint).
+
+Extension functions
+- `pg_gen_query(text) RETURNS text`: Generates SQL from a natural-language query and returns it as text without executing it.
+- `pg_gen_execute(text) RETURNS refcursor`: Generates SQL from a natural-language query and executes it, returning a cursor reference for result fetching.
+  - Implemented in PL/pgSQL (not C++), wraps `pg_gen_query` and executes the generated SQL.
+  - Returns a refcursor named `'ai_query_result'` that users can fetch from within a transaction block.
+  - Usage pattern: `BEGIN; SELECT pg_gen_execute('query'); FETCH ALL FROM ai_query_result; COMMIT;`
+  - The cursor approach provides memory efficiency for large result sets and doesn't require predefined column definitions.
+  - Users can navigate cursors with FETCH NEXT, FETCH n, FETCH ALL, FETCH FORWARD, FETCH BACKWARD, etc.
+  - Cursors are automatically closed on COMMIT/ROLLBACK.
+
+C++ implementation notes
+- Only `pg_gen_query` is implemented in C++ (`src/pg_ask.cpp`). It uses SPI for schema inspection and the AI SDK for SQL generation.
+- `pg_gen_execute` is a PL/pgSQL wrapper function defined in `pg/pg_ask--1.0.sql` that calls `pg_gen_query`, then opens a cursor with `OPEN cursor FOR EXECUTE generated_sql`.
+- If modifying the C++ code, focus on `pg_gen_query`. The SRF/SPI integration for direct execution is not used in the current design.
+
 Developer workflow & quality gates
 - Build inside the same Postgres version you plan to run (header/API differences exist across PG versions). The Dockerfile in `docker/` can help pin the correct server/devel headers.
 - Quick tests:
