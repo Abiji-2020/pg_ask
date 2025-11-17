@@ -2,7 +2,7 @@
   "repository": "abiji-2020/pg_ask",
   "version": "main",
   "base_url": "https://abiji-2020.github.io/pg_ask",
-  "generated_at": "2025-11-17T03:44:16.266374Z",
+  "generated_at": "2025-11-17T03:52:55.551356Z",
   "releases": {
     "linux-x86_64": [
       {
@@ -15,13 +15,13 @@
         "name": "pg_ask--1.0.sql",
         "path": "releases/linux-x86_64/pg_ask--1.0.sql",
         "url": "https://abiji-2020.github.io/pg_ask/releases/linux-x86_64/pg_ask--1.0.sql",
-        "size": 285
+        "size": 734
       },
       {
         "name": "pg_ask.so",
         "path": "releases/linux-x86_64/pg_ask.so",
         "url": "https://abiji-2020.github.io/pg_ask/releases/linux-x86_64/pg_ask.so",
-        "size": 2645560
+        "size": 2645720
       }
     ]
   }
