@@ -34,7 +34,7 @@ Running locally (docker)
 - `docker-compose` automatically loads `.env`. The compose file substitutes `${API_KEY}` and passes it into the container as `PG_ASK_AI_KEY`.
 
 Postgres extension runtime notes
-- The extension is a PostgreSQL server extension. To call C++ code from SQL you must expose a PG_FUNCTION (see `pg_ask.cpp` and `PG_FUNCTION_INFO_V1(pg_gen_query)` and `PG_FUNCTION_INFO_V1(pg_gen_execute)`).
+- The extension is a PostgreSQL server extension. To call C++ code from SQL you must expose a PG_FUNCTION (see `pg_ask.cpp` and `PG_FUNCTION_INFO_V1(pg_gen_query)`).
 - Use `cstring_to_text()` to convert returned `std::string`/`char*` results to `text*` for `PG_RETURN_TEXT_P()`.
 - Prefer building the SDK client (ai::Client) inside C++ code (no need to export it with `extern "C"`); wrap only the minimal PG-facing function in `extern "C"`.
 
