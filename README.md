@@ -390,7 +390,7 @@ Cursors provide several advantages:
 
 ### Components
 
-- **pg_ask.cpp**: Entry point, exposes `pg_gen_query` and `pg_gen_execute` functions
+- **pg_ask.cpp**: Entry point, exposes the `pg_gen_query` function (C++); `pg_gen_execute` is a PL/pgSQL wrapper
 - **explorer.cpp**: Database schema inspection and formatting
 - **ai_engine.cpp**: AI SDK wrapper for prompt building and SQL generation
 - **ai-sdk-cpp**: Third-party AI SDK for communicating with AI providers
