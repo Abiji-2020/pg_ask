@@ -546,42 +546,6 @@ docker exec pg_ask env | grep PG_ASK
 docker exec -it pg_ask psql -U postgres
 ```
 
-## Performance Considerations
-
-- **Schema Inspection**: The extension inspects your database schema on each call. For large databases with many tables, this adds overhead.
-- **AI API Latency**: Query generation depends on external API calls, which typically take 1-3 seconds.
-- **Caching**: Consider caching frequently used generated queries in your application layer.
-- **Connection Pooling**: Use connection pooling to minimize overhead of extension initialization.
-
-## Security
-
-⚠️ **Important Security Notes:**
-
-1. **API Keys**: Never commit API keys to version control. Use environment variables or secret management systems.
-2. **Query Validation**: Review generated SQL before executing in production environments, especially with `pg_gen_execute`.
-3. **Permissions**: The extension executes with the permissions of the connected user. Use appropriate database roles and privileges.
-4. **Rate Limiting**: Consider implementing rate limiting for AI API calls to control costs and prevent abuse.
-5. **SQL Injection**: While the AI generates SQL, always validate and sanitize user inputs to your application.
-
-## Cost Considerations
-
-- Each call to `pg_gen_query` or `pg_gen_execute` makes an API call to your AI provider
-- Typical cost: $0.0001 - $0.001 per query (varies by provider and model)
-- Consider caching for frequently asked questions
-- Use `pg_gen_query` for validation before executing with `pg_gen_execute`
-
-## Supported AI Providers
-
-The extension works with OpenAI-compatible APIs:
-
-- **OpenAI**: GPT-4, GPT-3.5-turbo
-- **Groq**: Fast inference with various models
-- **Azure OpenAI**: Enterprise OpenAI deployment
-- **OpenRouter**: Access to multiple model providers
-- Any provider with OpenAI-compatible API
-
-Configure the provider in `src/ai_engine.cpp` or via extension parameters.
-
 ## Contributing
 
 Contributions are welcome! Please see our [Contributing Guidelines](.github/CONTRIBUTING.md).
